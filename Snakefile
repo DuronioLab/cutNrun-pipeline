@@ -51,6 +51,7 @@ combinedGenome = '-'.join(speciesList)
 # TODO: fix _spikeNorm -> _{species}-spikeNorm
 fragTypes    = ['allFrags', '20to120', '150to700']
 normTypeList = ['', '_rpgcNorm'] + ["_{}-spikeNorm".format(species) for species in SPIKEGENOME]
+supPelList = ['sup', 'pel']
 
 sampleInfo, sampleSheet = pre.makeSampleSheets(file_info_path, basename_columns, "-", fileDelimiter = config['sampleInfoDelimiter'])
 poolSampleSheet = sampleSheet.copy()
@@ -119,6 +120,8 @@ rule all:
 		expand('Plots/FragDistInPeaks/{sample}_{REFGENOME}_trim_q5_allFrags_fragDistPlot.png', sample = sampleSheet.baseName, REFGENOME = REFGENOME),
 		expand('BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_rpgcNorm_zNorm.bw', sample = sampleSheet.baseName, REFGENOME = REFGENOME, fragType = fragTypes),
 		expand("AlignmentStats/{sample}_{species}_trim.tsv", sample = sampleSheet.baseName, species = combinedGenome),
+		expand('Plots/{sp}_PCA.eps', sp = supPelList),
+		expand('Plots/{sp}_summary.npz', sp = supPelList),
 		expand("AlignmentStats/{sample}_{species}_trim_q5.tsv", sample = sampleSheet.baseName, species = combinedGenome),
 		expand("AlignmentStats/{sample}_{species}_trim_q5_dupsRemoved.tsv", sample = sampleSheet.baseName, species = combinedGenome)
 
@@ -547,6 +550,21 @@ rule alignmentStats:
 		"""
 	# TODO: use newer samtools and use json output
 	#samtools flagstat -O json {input.q5_dupsRemoved} > {output.q5_dupsRemoved}
+	
+rule makePCA:
+	input:
+		expand('Bam/{sample}_dm6_trim_q5_dupsRemoved_sorted.bam', sample = sampleSheet.baseName)
+	output:
+		PCA = 'Plots/{sp}_PCA.eps',
+		summary = 'Plots/{sp}_summary.npz'
+	params:
+		module = config['module']['deeptoolsVer'],
+		prefix = '{sp}'
+	shell:
+		"""
+		module purge && module load {params.module}
+		bash scripts/makePCA.sh {params.prefix}
+		"""
 
 #rule makeFragmentSizePlots:
 #	input:
